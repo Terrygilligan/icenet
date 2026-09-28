@@ -1,0 +1,11 @@
+{
+  "name": "icenet-app",
+  "version": "1.0.0",
+  "description": "Multi-tenant temperature-controlled logistics web app for Bulgaria",
+  "private": true,
+  "scripts": {
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm run dev",
+    "build": "cd client && npm run build"
+  }
+}
