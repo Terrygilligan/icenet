@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 import {
   Store,
   PlusCircle,
@@ -47,8 +48,8 @@ export const MerchantDashboard = () => {
     try {
       setLoading(true);
       const [oRes, zRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/orders?merchantId=${user?.id || 'usr_merchant1'}`),
-        fetch('http://localhost:5000/api/zones')
+        fetch(`${API_BASE_URL}/api/orders?merchantId=${user?.id || 'usr_merchant1'}`),
+        fetch(`${API_BASE_URL}/api/zones`)
       ]);
       const oData = await oRes.json();
       const zData = await zRes.json();
@@ -79,7 +80,7 @@ export const MerchantDashboard = () => {
     e.preventDefault();
     try {
       const estimatedPrice = calculateEstimatedPrice();
-      const res = await fetch('http://localhost:5000/api/orders', {
+      const res = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

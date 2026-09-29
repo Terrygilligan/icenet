@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 import {
   Truck,
   CheckCircle,
@@ -42,8 +43,8 @@ export const ProviderDashboard = () => {
     try {
       setLoading(true);
       const [fRes, oRes] = await Promise.all([
-        fetch('http://localhost:5000/api/fleet'),
-        fetch('http://localhost:5000/api/orders')
+        fetch(`${API_BASE_URL}/api/fleet`),
+        fetch(`${API_BASE_URL}/api/orders`)
       ]);
       const fData = await fRes.json();
       const oData = await oRes.json();
@@ -63,7 +64,7 @@ export const ProviderDashboard = () => {
 
   const handleDispatchAction = async (orderId, action, vehicleId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/orders/${orderId}/dispatch`, {
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/dispatch`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +83,7 @@ export const ProviderDashboard = () => {
 
   const handleUpdateOrderStatus = async (orderId, status, currentTemp) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +104,7 @@ export const ProviderDashboard = () => {
   const handleAddVehicle = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/fleet', {
+      const res = await fetch(`${API_BASE_URL}/api/fleet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

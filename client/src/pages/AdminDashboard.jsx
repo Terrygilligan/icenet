@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
+import { API_BASE_URL } from '../config';
 import {
   ShieldCheck,
   Users,
@@ -39,9 +40,9 @@ export const AdminDashboard = () => {
     try {
       setLoading(true);
       const [mRes, uRes, zRes] = await Promise.all([
-        fetch('http://localhost:5000/api/metrics'),
-        fetch('http://localhost:5000/api/users'),
-        fetch('http://localhost:5000/api/zones')
+        fetch(`${API_BASE_URL}/api/metrics`),
+        fetch(`${API_BASE_URL}/api/users`),
+        fetch(`${API_BASE_URL}/api/zones`)
       ]);
       const mData = await mRes.json();
       const uData = await uRes.json();
@@ -63,7 +64,7 @@ export const AdminDashboard = () => {
 
   const handleUpdateUserStatus = async (userId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${userId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -79,7 +80,7 @@ export const AdminDashboard = () => {
   const handleAddZone = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/zones', {
+      const res = await fetch(`${API_BASE_URL}/api/zones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newZoneData)
