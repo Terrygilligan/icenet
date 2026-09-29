@@ -15,9 +15,15 @@ enum PackageStatus {
   DELIVERED
 }
 
-enum TransportType {
-  EV_VAN
-  EV_TRUCK
+enum TempClass {
+  DEEP_FREEZE
+  CHILLED
+  AMBIENT
+}
+
+enum VehicleType {
+  EV_VAN_LOCAL
+  EV_TRUCK_HEAVY
   ELECTRIC_RAIL
 }
 
@@ -51,6 +57,7 @@ model Package {
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   barcode        String        @unique
   status         PackageStatus @default(PENDING_PICKUP)
+  tempClass      TempClass     @default(CHILLED)
   currentDepotId String?
   currentDepot   Depot?        @relation(fields: [currentDepotId], references: [id])
   currentRouteId String?
@@ -61,29 +68,33 @@ model Package {
 }
 
 model Depot {
-  id               String     @id @default(uuid())
-  name             String
-  location         String
-  coldStorageType  String     // e.g. "DEEP_FREEZE_-20C", "CHILLED_+2C"
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  packages         Package[]
-  originLegs       RouteLeg[] @relation("OriginDepot")
-  destinationLegs  RouteLeg[] @relation("DestinationDepot")
+  id                String     @id @default(uuid())
+  name              String
+  location          String
+  coldStorageType   String     // e.g. "DEEP_FREEZE_-20C", "CHILLED_+2C"
+  solarCapacityKW   Float      @default(150.0)
+  batteryStorageKWh Float      @default(300.0)
+  chargingBaysCount Int        @default(8)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  packages          Package[]
+  originLegs        RouteLeg[] @relation("OriginDepot")
+  destinationLegs   RouteLeg[] @relation("DestinationDepot")
 
   @@map("depots")
 }
 
 model Vehicle {
-  id                String        @id @default(uuid())
-  name              String
-  transportType     TransportType @default(EV_VAN)
-  batteryCapacity   Float         // kWh
-  coldChainPowerKW  Float         // kW required for refrigeration
-  maxRangeKm        Float         // km range
-  status            String        @default("AVAILABLE")
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                 String      @id @default(uuid())
+  vin                String      @unique
+  type               VehicleType @default(EV_VAN_LOCAL)
+  batteryCapacityKWh Float       @default(100.0)
+  currentSoCPercent  Float       @default(100.0)
+  reeferDrawKW       Float       @default(5.0)
+  maxRangeKm         Float       @default(250.0)
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   @@map("vehicles")
 }
@@ -94,9 +105,10 @@ model RouteLeg {
   originDepot          Depot       @relation("OriginDepot", fields: [originDepotId], references: [id])
   destinationDepotId   String
   destinationDepot     Depot       @relation("DestinationDepot", fields: [destinationDepotId], references: [id])
-  transitMode          TransitMode @default(EV_ROAD)
-  chargingBayReserved  Boolean     @default(false)
+  mode                 TransitMode @default(EV_ROAD)
   distanceKm           Float
+  estTransitMinutes    Int         @default(120)
+  chargingStopRequired Boolean     @default(false)
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 

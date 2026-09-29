@@ -9,6 +9,7 @@ export interface LocalPackage {
   orderId: string;
   barcode: string;
   status: string;
+  tempClass: 'DEEP_FREEZE' | 'CHILLED' | 'AMBIENT';
   currentDepotId: string | null;
   currentRouteId: string | null;
   createdAt: string;
@@ -20,7 +21,7 @@ export const localStore = {
     {
       id: 'ord_ev_sofia_101',
       clientId: 'client_lacta_bg',
-      pickupAddress: 'Sofia Industrial Kazichene EV Hub',
+      pickupAddress: 'Sofia Industrial Kazichene Solar EV Hub',
       deliveryAddress: 'Plovdiv Central Logistics Hub',
       pickupWindowStart: new Date().toISOString(),
       pickupWindowEnd: new Date(Date.now() + 10800000).toISOString(),
@@ -38,6 +39,7 @@ export const localStore = {
       orderId: 'ord_ev_sofia_101',
       barcode: 'BC-EV-BG-101',
       status: 'DEPOT_INVENTORY',
+      tempClass: 'CHILLED',
       currentDepotId: 'depot_sofia_ev_main',
       currentRouteId: null,
       createdAt: new Date().toISOString(),
@@ -46,35 +48,53 @@ export const localStore = {
   depots: [
     {
       id: 'depot_sofia_ev_main',
-      name: 'Sofia Central EV Cold Storage Depot',
+      name: 'Sofia Central Solar EV Depot',
       location: 'Sofia Ring Road Kazichene',
       coldStorageType: 'CHILLED_+2C_+8C',
+      solarCapacityKW: 250.0,
+      batteryStorageKWh: 500.0,
+      chargingBaysCount: 12,
     },
     {
       id: 'depot_plovdiv_ev_main',
-      name: 'Plovdiv Thracian EV Depot',
+      name: 'Plovdiv Thracian Solar EV Depot',
       location: 'Plovdiv Industrial Zone North',
       coldStorageType: 'DEEP_FREEZE_-20C',
+      solarCapacityKW: 180.0,
+      batteryStorageKWh: 400.0,
+      chargingBaysCount: 8,
     }
   ],
   vehicles: [
     {
       id: 'veh_ev_van_01',
-      name: 'Volvo FH Electric Chilled Semi',
-      transportType: 'EV_TRUCK',
-      batteryCapacity: 540, // kWh
-      coldChainPowerKW: 12.5,
-      maxRangeKm: 300,
-      status: 'AVAILABLE'
+      vin: '19VBG01EVVAN10001',
+      type: 'EV_VAN_LOCAL',
+      batteryCapacityKWh: 120.0,
+      currentSoCPercent: 95.0,
+      reeferDrawKW: 4.5,
+      maxRangeKm: 280.0,
+      isActive: true
+    },
+    {
+      id: 'veh_ev_truck_01',
+      vin: '19VBG01EVTRK20002',
+      type: 'EV_TRUCK_HEAVY',
+      batteryCapacityKWh: 540.0,
+      currentSoCPercent: 88.0,
+      reeferDrawKW: 12.5,
+      maxRangeKm: 320.0,
+      isActive: true
     },
     {
       id: 'veh_electric_rail_01',
-      name: 'Balkan Express Electric Rail Container',
-      transportType: 'ELECTRIC_RAIL',
-      batteryCapacity: 2000,
-      coldChainPowerKW: 45.0,
-      maxRangeKm: 1200,
-      status: 'AVAILABLE'
+      vin: '19VBG01EVRAIL30003',
+      type: 'ELECTRIC_RAIL',
+      batteryCapacityKWh: 2000.0,
+      currentSoCPercent: 100.0,
+      reeferDrawKW: 45.0,
+      maxRangeKm: 1200.0,
+      isActive: true
     }
   ],
   routeLegs: [
@@ -82,9 +102,10 @@ export const localStore = {
       id: 'leg_sofia_plovdiv_rail',
       originDepotId: 'depot_sofia_ev_main',
       destinationDepotId: 'depot_plovdiv_ev_main',
-      transitMode: 'ELECTRIC_RAIL',
-      chargingBayReserved: true,
-      distanceKm: 145.0
+      mode: 'ELECTRIC_RAIL',
+      distanceKm: 145.0,
+      estTransitMinutes: 90,
+      chargingStopRequired: false
     }
   ],
   eventLogs: new Map<string, EventEnvelope>() // Key: idempotencyKey
@@ -105,7 +126,8 @@ router.post('/orders', async (req: Request, res: Response) => {
     deliveryWindowEnd,
     minTemp,
     maxTemp,
-    packageCount
+    packageCount,
+    tempClass
   } = req.body;
 
   if (!pickupAddress || !deliveryAddress) {
@@ -151,6 +173,8 @@ router.post('/orders', async (req: Request, res: Response) => {
   // Generate packages
   const count = packageCount || 1;
   const createdPackages: LocalPackage[] = [];
+  const selectedTempClass = tempClass || 'CHILLED';
+
   for (let i = 1; i <= count; i++) {
     const pkgId = `pkg_${orderId}_${i}`;
     const barcode = `BC-EV-${orderId}-${i}`;
@@ -159,6 +183,7 @@ router.post('/orders', async (req: Request, res: Response) => {
       orderId,
       barcode,
       status: 'PENDING_PICKUP',
+      tempClass: selectedTempClass,
       currentDepotId: null,
       currentRouteId: null,
       createdAt: new Date().toISOString()
@@ -172,7 +197,8 @@ router.post('/orders', async (req: Request, res: Response) => {
       payload: {
         packageId: pkgId,
         orderId,
-        barcode
+        barcode,
+        tempClass: selectedTempClass
       },
       timestamp: new Date().toISOString()
     };
@@ -181,7 +207,7 @@ router.post('/orders', async (req: Request, res: Response) => {
   }
 
   return res.status(201).json({
-    message: 'Order created successfully and published to Pub/Sub',
+    message: 'Order created successfully and published to GCP Pub/Sub',
     order: newOrder,
     packages: createdPackages
   });
@@ -243,7 +269,7 @@ router.post('/sync/events', async (req: Request, res: Response) => {
       }
     }
 
-    // Publish to Pub/Sub
+    // Publish to GCP Pub/Sub
     await pubsubManager.publish(eventType, processedEvent);
     results.push({ idempotencyKey, status: 'PROCESSED', eventType });
   }

@@ -19,6 +19,7 @@ export interface PackageLabeledPayload {
   packageId: string;
   orderId: string;
   barcode: string;
+  tempClass?: 'DEEP_FREEZE' | 'CHILLED' | 'AMBIENT';
 }
 
 export interface PackageDepotReceivedPayload {
