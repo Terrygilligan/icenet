@@ -1,0 +1,115 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PackageStatus {
+  PENDING_PICKUP
+  IN_TRANSIT_LOCAL
+  DEPOT_INVENTORY
+  IN_TRANSIT_LINEHAUL
+  DELIVERED
+}
+
+enum TransportType {
+  EV_VAN
+  EV_TRUCK
+  ELECTRIC_RAIL
+}
+
+enum TransitMode {
+  EV_ROAD
+  ELECTRIC_RAIL
+}
+
+model Order {
+  id                   String     @id @default(uuid())
+  clientId             String
+  pickupAddress        String
+  deliveryAddress      String
+  pickupWindowStart    DateTime
+  pickupWindowEnd      DateTime
+  deliveryWindowStart  DateTime
+  deliveryWindowEnd    DateTime
+  minTemp              Float
+  maxTemp              Float
+  status               String     @default("PENDING")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  packages             Package[]
+
+  @@map("orders")
+}
+
+model Package {
+  id             String        @id @default(uuid())
+  orderId        String
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  barcode        String        @unique
+  status         PackageStatus @default(PENDING_PICKUP)
+  currentDepotId String?
+  currentDepot   Depot?        @relation(fields: [currentDepotId], references: [id])
+  currentRouteId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("packages")
+}
+
+model Depot {
+  id               String     @id @default(uuid())
+  name             String
+  location         String
+  coldStorageType  String     // e.g. "DEEP_FREEZE_-20C", "CHILLED_+2C"
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  packages         Package[]
+  originLegs       RouteLeg[] @relation("OriginDepot")
+  destinationLegs  RouteLeg[] @relation("DestinationDepot")
+
+  @@map("depots")
+}
+
+model Vehicle {
+  id                String        @id @default(uuid())
+  name              String
+  transportType     TransportType @default(EV_VAN)
+  batteryCapacity   Float         // kWh
+  coldChainPowerKW  Float         // kW required for refrigeration
+  maxRangeKm        Float         // km range
+  status            String        @default("AVAILABLE")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("vehicles")
+}
+
+model RouteLeg {
+  id                   String      @id @default(uuid())
+  originDepotId        String
+  originDepot          Depot       @relation("OriginDepot", fields: [originDepotId], references: [id])
+  destinationDepotId   String
+  destinationDepot     Depot       @relation("DestinationDepot", fields: [destinationDepotId], references: [id])
+  transitMode          TransitMode @default(EV_ROAD)
+  chargingBayReserved  Boolean     @default(false)
+  distanceKm           Float
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@map("route_legs")
+}
+
+model EventLog {
+  id              String   @id @default(uuid())
+  idempotencyKey  String   @unique
+  eventType       String
+  payload         Json
+  deviceId        String?
+  processedAt     DateTime @default(now())
+
+  @@map("event_logs")
+}

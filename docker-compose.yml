@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: icenet_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: icenet_dev_db
+      POSTGRES_USER: icenet_admin
+      POSTGRES_PASSWORD: icenet_dev_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pubsub-emulator:
+    image: google/cloud-sdk:emulators
+    container_name: icenet_pubsub_emulator
+    restart: always
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=icenet-dev-project
+    ports:
+      - "8085:8085"
+
+  app:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: icenet_api_app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      DATABASE_URL: "postgresql://icenet_admin:icenet_dev_password_2026@postgres:5432/icenet_dev_db?schema=public"
+      PUBSUB_EMULATOR_HOST: "pubsub-emulator:8085"
+      GCP_PROJECT_ID: "icenet-dev-project"
+    depends_on:
+      - postgres
+      - pubsub-emulator
+
+volumes:
+  pgdata:

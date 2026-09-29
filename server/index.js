@@ -10,6 +10,7 @@ const orderRoutes = require('./routes/orders');
 const fleetRoutes = require('./routes/fleet');
 const zoneRoutes = require('./routes/zones');
 const metricRoutes = require('./routes/metrics');
+const edaRoutes = require('./routes/eda');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,6 +25,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/zones', zoneRoutes);
 app.use('/api/metrics', metricRoutes);
+app.use('/api/eda', edaRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
